@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スマホの傾きで揺れる液体</title>
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #1a1a1a;
+    margin: 0;
+    overflow: hidden;
+    font-family: sans-serif;
+  }
+
+  /* センサー許可ボタン (iOS用) */
+  #startButton {
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    background-color: #007BFF;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    z-index: 10;
+  }
+
+  /* グラス（容器）の部分 */
+  .glass {
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    border: 6px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+    background-color: #2a2a2a;
+    display: none; /* 初期状態は非表示 */
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  }
+
+  /* 液体の部分 */
+  .liquid {
+    position: absolute;
+    /* 容器の倍のサイズにして回転しても隙間ができないようにする */
+    top: 50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background-color: #00BFFF;
+    opacity: 0.8;
+    /* 動きを少し滑らかにする */
+    transition: transform 0.1s ease-out;
+  }
+</style>
+</head>
+<body>
+
+  <!-- iOS13+対策用の開始ボタン -->
+  <button id="startButton">センサーを許可して開始</button>
+
+  <div class="glass" id="glass">
+    <div class="liquid" id="liquid"></div>
+  </div>
+
+<script>
+  const startButton = document.getElementById('startButton');
+  const glass = document.getElementById('glass');
+  const liquid = document.getElementById('liquid');
+
+  // ボタンクリックでセンサーのアクセス許可をリクエスト
+  startButton.addEventListener('click', () => {
+    // iOS 13+ 向けの処理
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation);
+            startGame();
+          } else {
+            alert('センサーのアクセスが拒否されました。設定を確認してください。');
+          }
+        })
+        .catch(console.error);
+    } else {
+      // Android等のiOS 13未満のデバイス
+      window.addEventListener('deviceorientation', handleOrientation);
+      startGame();
+    }
+  });
+
+  function startGame() {
+    startButton.style.display = 'none';
+    glass.style.display = 'block';
+  }
+
+  // 傾きに応じて液体を動かす処理
+  function handleOrientation(event) {
+    // gamma: 左右の傾き (-90 から 90)
+    // beta: 前後の傾き (-180 から 180)
+    let gamma = event.gamma;
+    let beta = event.beta;
+
+    if (gamma === null || beta === null) return;
+
+    // スマホの左右の傾き（gamma）をそのまま回転角度にする
+    // 画面を正面に向けた時の前後の傾き（beta - 90）を使って液面の高さを変える
+    const rotate = gamma; 
+    
+    // betaは通常、垂直に持っていると約90になるので、それを基準(0)にして上下の移動量を計算
+    const betaOffset = beta - 90;
+    const translateY = betaOffset * 2; // 感度調整（2倍）
+
+    // 液体要素にCSS Transformを適用 (上下移動させてから回転)
+    liquid.style.transform = `translateY(${translateY}px) rotate(${rotate}deg)`;
+  }
+</script>
+
+</body>
+</html>
